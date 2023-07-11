@@ -1,7 +1,7 @@
 from flask import Flask
 
 
-def create_app():
+def create_app() -> Flask:
     app = Flask(__name__)
 
     @app.route("/")
@@ -12,4 +12,4 @@ def create_app():
 
 
 if __name__ == '__main__':
-    print("main")
+    print("Run RubberSnakeBoat using `flask run`")

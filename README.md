@@ -6,6 +6,7 @@ This project uses the following tools:
 - [poetry](https://python-poetry.org/docs/)
 - [flask](https://flask.palletsprojects.com)
 - [pytest](https://docs.pytest.org)
+- [mypy](https://mypy.readthedocs.io/en/stable/index.html)
 
 To install, do:
 
@@ -17,6 +18,7 @@ To test, do:
 
 ```commandline
 poetry run pytest
+mypy
 ```
 
 To run, do:
