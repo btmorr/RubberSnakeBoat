@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "RubberSnakeBoat"
 version = "0.1.0"
-description = ""
+description = "a toy k-v database using Raft in Python"
 authors = ["Toma Morris <btmorr@users.noreply.github.com>"]
 readme = "README.md"
 

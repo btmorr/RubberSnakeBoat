@@ -2,12 +2,16 @@
 
 This is a toy implementation of a k-v store database using the [Raft protocol](https://raft.github.io/) in Python
 
+This project uses the following tools:
+- [poetry](https://python-poetry.org/docs/)
+- [flask](https://flask.palletsprojects.com)
+- [pytest](https://docs.pytest.org)
+
 To install, do:
 
 ```commandline
 poetry install
 ```
-
 
 To test, do:
 
