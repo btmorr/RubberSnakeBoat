@@ -21,13 +21,23 @@ poetry run pytest
 mypy
 ```
 
-To run, do:
+To run locally, do:
 
 ```commandline
 poetry shell
 flask run
 ```
 
+To build in a container, do:
+
+```commandline
+docker build -t tag .
+```
+To run in a container, do:
+
+```commandline
+docker run -p 5000:5000 -t tag
+```
 
 ## Troubleshooting
 
@@ -37,4 +47,4 @@ If you are using Windows/PowerShell, and you encounter an error that says "runni
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process
 ```
 
-This is designed to allow `poetry` to run scripts, without unnecesarily disabling security restrictions -- it only allows signed scripts, and only for the current PowerShell process. See [the Microsoft article on execution policies](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_execution_policies?view=powershell-7.3).
+This is designed to allow `poetry` to run scripts, without unnecessarily disabling security restrictions -- it only allows signed scripts, and only for the current PowerShell process. See [the Microsoft article on execution policies](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_execution_policies?view=powershell-7.3).
