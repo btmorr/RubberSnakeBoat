@@ -1,5 +1,7 @@
 # RubberSnakeBoat
 
+[![CircleCI](https://dl.circleci.com/status-badge/img/gh/btmorr/RubberSnakeBoat/tree/main.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/gh/btmorr/RubberSnakeBoat/tree/main)
+
 This is a toy implementation of a k-v store database using the [Raft protocol](https://raft.github.io/) in Python
 
 This project uses the following tools:
