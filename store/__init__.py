@@ -1,3 +1,6 @@
+from typing import Union
+
+
 class Store:
     """
     A k-v datastore with basic crud operations
@@ -9,7 +12,7 @@ class Store:
     def upsert(self, key: str, value: str):
         self.internal[key] = value
 
-    def read(self, key: str) -> str | None:
+    def read(self, key: str) -> Union[str, None]:
         return self.internal.get(key)
 
     def delete(self, key: str):
