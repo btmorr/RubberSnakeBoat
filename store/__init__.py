@@ -9,7 +9,7 @@ class Store:
     def upsert(self, key: str, value: str):
         self.internal[key] = value
 
-    def read(self, key: str) -> str:
+    def read(self, key: str) -> str | None:
         return self.internal.get(key)
 
     def delete(self, key: str):

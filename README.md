@@ -19,7 +19,7 @@ poetry install
 To test, do:
 
 ```commandline
-poetry run pytest
+pytest --cov-report term-missing --cov
 mypy
 ```
 
