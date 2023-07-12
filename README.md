@@ -4,7 +4,7 @@ This is a toy implementation of a k-v store database using the [Raft protocol](h
 
 This project uses the following tools:
 - [poetry](https://python-poetry.org/docs/)
-- [flask](https://flask.palletsprojects.com)
+- [fastapi](https://fastapi.tiangolo.com)
 - [pytest](https://docs.pytest.org)
 - [mypy](https://mypy.readthedocs.io/en/stable/index.html)
 
@@ -25,7 +25,7 @@ To run locally, do:
 
 ```commandline
 poetry shell
-flask run
+uvicorn main:app --reload
 ```
 
 To build in a container, do:
@@ -36,8 +36,10 @@ docker build -t tag .
 To run in a container, do:
 
 ```commandline
-docker run -p 5000:5000 -t tag
+docker run -p 8000:8000 -t tag
 ```
+
+To interact with a running server, navigate to [localhost:8000/docs](http://localhost:8000/docs) (or wherever the server is running)
 
 ## Troubleshooting
 
