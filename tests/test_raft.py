@@ -1,8 +1,12 @@
 import os
 import sys
+
+import pytest
+
 sys.path.append(os.path.realpath(os.path.dirname(__file__)+"/.."))
 
-from raft import *  # noqa
+from raft import State, Entry, Op, Role, InvalidOperationException  # noqa
+from store import Store  # noqa
 
 
 def test_append_entries_empty():
@@ -10,6 +14,7 @@ def test_append_entries_empty():
     entries"""
     term = 1
     s = State()
+    s.store = Store()
     # simulate a previous successful election
     s.currentTerm = term
 
@@ -30,6 +35,7 @@ def test_append_entries_nonempty_first():
     term = 1
     # simulate a previous successful election
     s = State()
+    s.store = Store()
     s.currentTerm = term
 
     le = Entry(op=Op.WRITE, key='this', value='that', term=term)
@@ -55,6 +61,7 @@ def test_append_entries_nonempty():
     le0 = Entry(op=Op.WRITE, key='this', value='that', term=term)
     # simulate a previous successful election and write
     s = State()
+    s.store = Store()
     s.currentTerm = term
     s.log = [le0]
 
@@ -77,12 +84,49 @@ def test_append_entries_nonempty():
     assert s.commitIndex == 0
 
 
+def test_append_entries_evict():
+    """test non-empty heartbeat condition for new term, evicting at least one
+    uncommitted entry from prior term"""
+    term = 1
+    le0 = Entry(op=Op.WRITE, key='this', value='that', term=term)
+    le1 = Entry(op=Op.DELETE, key='this', value=None, term=term)
+    # simulate a previous successful election and write
+    s = State()
+    s.store = Store()
+    s.currentTerm = term
+    s.log = [le0, le1]
+
+    new_term = term + 1
+    le2 = Entry(op=Op.WRITE, key='this', value='other', term=new_term)
+
+    # commit index 0 and expect a record from term 2 at index 1
+    res = s.append_entries(
+        term=new_term,
+        leader_id=0,
+        prev_log_index=1,
+        prev_log_term=2,
+        entries=[le2],
+        leader_commit=0)
+    # expect non-success response indicating that new leader should
+    # retry ship with an earlier payload to replace evicted record
+    assert not res.success
+    assert res.term == new_term
+    # expect follower to evict logs
+    assert len(s.log) == 1
+    assert s.log[0].term == term
+    # expect follower to truncate log
+    assert s.log[0].op == le0.op
+    # expect follower to not commit, since log is incomplete
+    assert s.commitIndex == -1
+
+
 def test_append_entries_nonempty_missing():
     """test missing prevLogIndex"""
     term = 1
     le0 = Entry(op=Op.WRITE, key='this', value='that', term=term)
     # simulate a previous successful election and write
     s = State()
+    s.store = Store()
     s.currentTerm = term
     s.log = [le0]
 
@@ -98,7 +142,8 @@ def test_append_entries_nonempty_missing():
     assert not res.success
     assert res.term == term
     assert len(s.log) == 1
-    assert s.commitIndex == 0
+    # expect follower to not commit, since log is incomplete
+    assert s.commitIndex == -1
 
 
 def test_append_entries_nonempty_discard():
@@ -109,6 +154,7 @@ def test_append_entries_nonempty_discard():
     le1 = Entry(op=Op.DELETE, key='this', value=None, term=term)
     # simulate a previous successful election and write
     s = State()
+    s.store = Store()
     s.currentTerm = term
     s.log = [le0, le1]
     s.commitIndex = 0
@@ -139,6 +185,7 @@ def test_append_entries_invalid_term():
     le0 = Entry(op=Op.WRITE, key='this', value='that', term=past_term)
     # simulate a previous successful election and write
     s = State()
+    s.store = Store()
     s.currentTerm = term
     s.log = [le0]
 
@@ -165,6 +212,7 @@ def test_append_entries_new_term():
     term = 1
     new_term = term + 1
     s = State()
+    s.store = Store()
     # simulate a previous successful election
     s.currentTerm = term
     s.role = Role.LEADER
@@ -180,3 +228,77 @@ def test_append_entries_new_term():
     assert res.term == new_term
     assert s.role == Role.FOLLOWER
     assert s.currentTerm == new_term
+
+
+def test_append_entries_apply_writes():
+    """test committing entries"""
+    term = 1
+    k1 = 'this'
+    v1 = 'that'
+    k2 = 'hem'
+    v2 = 'haw'
+    le0 = Entry(op=Op.WRITE, key=k1, value=v1, term=term)
+    le1 = Entry(op=Op.WRITE, key=k2, value=v2, term=term)
+    # simulate a previous successful election and write
+    s = State()
+    s.store = Store()
+    s.currentTerm = term
+    s.log = [le0, le1]
+
+    # no new entries, commit existing
+    res = s.append_entries(
+        term=term,
+        leader_id=0,
+        prev_log_index=1,
+        prev_log_term=term,
+        entries=[],
+        leader_commit=1)
+    assert res.success
+    assert s.commitIndex == 1
+    assert s.store.read(k1) == v1
+    assert s.store.read(k2) == v2
+
+
+def test_append_entries_apply_delete():
+    """test committing entries"""
+    term = 1
+    k = 'this'
+    v = 'that'
+    le0 = Entry(op=Op.WRITE, key=k, value=v, term=term)
+    le1 = Entry(op=Op.DELETE, key=k, value=None, term=term)
+    # simulate a previous successful election and write
+    s = State()
+    s.store = Store()
+    s.currentTerm = term
+    s.log = [le0, le1]
+
+    # no new entries, commit existing
+    res = s.append_entries(
+        term=term,
+        leader_id=0,
+        prev_log_index=1,
+        prev_log_term=term,
+        entries=[],
+        leader_commit=1)
+    assert res.success
+    assert len(s.log) == 2
+    assert s.commitIndex == 1
+    assert not s.store.read(k)
+
+
+def test_invalid_entry_operation():
+    s = State()
+    s.store = Store()
+
+    ie0 = Entry(op=Op.READ, key='this', value='that', term=1)
+    with pytest.raises(InvalidOperationException):
+        s.apply_entry(ie0)
+
+
+def test_invalid_entry_value():
+    s = State()
+    s.store = Store()
+
+    ie0 = Entry(op=Op.WRITE, key='this', value=None, term=1)
+    with pytest.raises(InvalidOperationException):
+        s.apply_entry(ie0)
