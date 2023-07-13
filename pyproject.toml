@@ -12,6 +12,7 @@ mypy = "^1.4.1"
 fastapi = "^0.100.0"
 uvicorn = {extras = ["standard"], version = "^0.22.0"}
 pytest-cov = "^4.1.0"
+httpx = "^0.24.1"
 
 
 [build-system]
