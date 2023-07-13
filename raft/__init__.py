@@ -1,4 +1,6 @@
 from enum import Enum
+from fastapi import BackgroundTasks
+from store import Store
 from typing import Dict, List, Union
 
 
@@ -28,7 +30,12 @@ class Entry:
         self.term = term
 
 
+class InvalidOperationException(Exception):
+    pass
+
+
 class State:
+    store: Store
     role: Role = Role.FOLLOWER
     currentTerm: int = 0
     votedFor: int
@@ -40,6 +47,20 @@ class State:
     nextIndex: Dict[str, int] = dict()
     matchIndex: Dict[str, int] = dict()
 
+    def apply_entry(self, entry: Entry):
+        if entry.op == Op.WRITE:
+            if entry.value:
+                self.store.upsert(entry.key, entry.value)
+            else:
+                raise InvalidOperationException(f"Invalid Operation: write missing value for key {entry.key}")
+        elif entry.op == Op.DELETE:
+            self.store.delete(entry.key)
+        else:
+            raise InvalidOperationException(f"Invalid Operation: {entry.op}")
+
+    def apply_entries(self, entries: List[Entry]):
+        [self.apply_entry(en) for en in entries]
+
     def append_entries(
             self,
             term: int,
@@ -47,7 +68,8 @@ class State:
             prev_log_index: int,
             prev_log_term: int,
             entries: List[Entry],
-            leader_commit: int) -> AppendResult:
+            leader_commit: int
+    ) -> AppendResult:
         if term < self.currentTerm:
             # ae from expired leader
             return AppendResult(self.currentTerm, False)
@@ -63,15 +85,19 @@ class State:
             prev_log = self.log[prev_log_index]
         except IndexError:
             # previous entry missing
-            success = False
+            return AppendResult(self.currentTerm, False)
         else:
             # entry found, check term
-            success = prev_log.term == prev_log_term
-            if not success:
-                self.log = self.log[:prev_log_index + 1]
+            if prev_log.term != prev_log_term:
+                # drop mismatched log
+                self.log = self.log[:prev_log_index]
+                return AppendResult(self.currentTerm, False)
         if len(self.log) > prev_log_index:
+            # drop logs past previous known index
             self.log = self.log[:prev_log_index+1]
             self.log.extend(entries)
         if leader_commit > self.commitIndex:
             self.commitIndex = min(leader_commit, len(self.log))
-        return AppendResult(self.currentTerm, success)
+        if self.commitIndex > self.lastApplied:
+            self.apply_entries(self.log[self.lastApplied+1:self.commitIndex+1])
+        return AppendResult(self.currentTerm, True)
