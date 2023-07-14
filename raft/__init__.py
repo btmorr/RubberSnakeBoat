@@ -1,19 +1,18 @@
-from enum import Enum
-from fastapi import BackgroundTasks
+from enum import StrEnum
 from store import Store
 from typing import Dict, List, Union
 
 
-class Role(Enum):
-    FOLLOWER = 0
-    CANDIDATE = 1
-    LEADER = 2
+class Role(StrEnum):
+    FOLLOWER = "follower"
+    CANDIDATE = "candidate"
+    LEADER = "leader"
 
 
-class Op(Enum):
-    READ = 0
-    WRITE = 1
-    DELETE = 2
+class Op(StrEnum):
+    READ = "read"
+    WRITE = "write"
+    DELETE = "delete"
 
 
 class AppendResult:
@@ -37,15 +36,15 @@ class InvalidOperationException(Exception):
 class State:
     store: Store
     role: Role = Role.FOLLOWER
-    currentTerm: int = 0
-    votedFor: int
+    current_term: int = 0
+    voted_for: int
     log: List[Entry] = list()
-    commitIndex: int = -1
+    commit_index: int = -1
     # application not yet implemented
-    lastApplied: int = -1
+    last_applied: int = -1
     # next and match idx fn not yet implemented
-    nextIndex: Dict[str, int] = dict()
-    matchIndex: Dict[str, int] = dict()
+    next_index: Dict[str, int] = dict()
+    match_index: Dict[str, int] = dict()
 
     def apply_entry(self, entry: Entry):
         if entry.op == Op.WRITE:
@@ -70,34 +69,34 @@ class State:
             entries: List[Entry],
             leader_commit: int
     ) -> AppendResult:
-        if term < self.currentTerm:
+        if term < self.current_term:
             # ae from expired leader
-            return AppendResult(self.currentTerm, False)
-        if term > self.currentTerm:
+            return AppendResult(self.current_term, False)
+        if term > self.current_term:
             # election happened, become follower
-            self.currentTerm = term
+            self.current_term = term
             self.role = Role.FOLLOWER
         if prev_log_index == -1:
             # only before any logs have been shipped
             self.log.extend(entries)
-            return AppendResult(self.currentTerm, True)
+            return AppendResult(self.current_term, True)
         try:
             prev_log = self.log[prev_log_index]
         except IndexError:
             # previous entry missing
-            return AppendResult(self.currentTerm, False)
+            return AppendResult(self.current_term, False)
         else:
             # entry found, check term
             if prev_log.term != prev_log_term:
                 # drop mismatched log
                 self.log = self.log[:prev_log_index]
-                return AppendResult(self.currentTerm, False)
+                return AppendResult(self.current_term, False)
         if len(self.log) > prev_log_index:
             # drop logs past previous known index
             self.log = self.log[:prev_log_index+1]
             self.log.extend(entries)
-        if leader_commit > self.commitIndex:
-            self.commitIndex = min(leader_commit, len(self.log))
-        if self.commitIndex > self.lastApplied:
-            self.apply_entries(self.log[self.lastApplied+1:self.commitIndex+1])
-        return AppendResult(self.currentTerm, True)
+        if leader_commit > self.commit_index:
+            self.commit_index = min(leader_commit, len(self.log))
+        if self.commit_index > self.last_applied:
+            self.apply_entries(self.log[self.last_applied + 1:self.commit_index + 1])
+        return AppendResult(self.current_term, True)
