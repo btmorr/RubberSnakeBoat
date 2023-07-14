@@ -37,10 +37,9 @@ class State:
     store: Store
     role: Role = Role.FOLLOWER
     current_term: int = 0
-    voted_for: int
+    voted_for: str = ''
     log: List[Entry] = list()
     commit_index: int = -1
-    # application not yet implemented
     last_applied: int = -1
     # next and match idx fn not yet implemented
     next_index: Dict[str, int] = dict()
