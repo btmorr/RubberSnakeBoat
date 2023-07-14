@@ -1,0 +1,22 @@
+version: 2.1
+jobs:
+  test-python:
+    # Install dependencies and run tests
+    docker:
+      - image: cimg/python:3.11-node
+    steps:
+      - checkout
+      - python/install-packages:
+          pkg-manager: poetry
+      - run:
+          name: test
+          command: poetry run pytest --cov-report term-missing --cov --junitxml=junit.xml
+      - run:
+          name: typecheck
+          command: poetry run mypy
+      - store_test_results:
+          path: junit.xml
+workflows:
+  build-and-test:
+    jobs:
+      - test-python
