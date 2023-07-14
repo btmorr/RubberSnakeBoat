@@ -1,18 +1,18 @@
-from enum import StrEnum
+from enum import Enum
 from store import Store
 from typing import Dict, List, Union
 
 
-class Role(StrEnum):
-    FOLLOWER = "follower"
-    CANDIDATE = "candidate"
-    LEADER = "leader"
+class Role(Enum):
+    FOLLOWER = 0
+    CANDIDATE = 1
+    LEADER = 2
 
 
-class Op(StrEnum):
-    READ = "read"
-    WRITE = "write"
-    DELETE = "delete"
+class Op(Enum):
+    READ = 0
+    WRITE = 1
+    DELETE = 2
 
 
 class AppendResult:
