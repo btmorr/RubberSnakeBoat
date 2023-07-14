@@ -16,7 +16,7 @@ def test_append_entries_empty():
     s = State()
     s.store = Store()
     # simulate a previous successful election
-    s.currentTerm = term
+    s.current_term = term
 
     res = s.append_entries(
         term=term,
@@ -36,7 +36,7 @@ def test_append_entries_nonempty_first():
     # simulate a previous successful election
     s = State()
     s.store = Store()
-    s.currentTerm = term
+    s.current_term = term
 
     le = Entry(op=Op.WRITE, key='this', value='that', term=term)
 
@@ -62,7 +62,7 @@ def test_append_entries_nonempty():
     # simulate a previous successful election and write
     s = State()
     s.store = Store()
-    s.currentTerm = term
+    s.current_term = term
     s.log = [le0]
 
     le1 = Entry(op=Op.DELETE, key='this', value=None, term=term)
@@ -81,7 +81,7 @@ def test_append_entries_nonempty():
     assert s.log[0].op == le0.op
     assert s.log[1].term == term
     assert s.log[1].op == le1.op
-    assert s.commitIndex == 0
+    assert s.commit_index == 0
 
 
 def test_append_entries_evict():
@@ -93,7 +93,7 @@ def test_append_entries_evict():
     # simulate a previous successful election and write
     s = State()
     s.store = Store()
-    s.currentTerm = term
+    s.current_term = term
     s.log = [le0, le1]
 
     new_term = term + 1
@@ -117,7 +117,7 @@ def test_append_entries_evict():
     # expect follower to truncate log
     assert s.log[0].op == le0.op
     # expect follower to not commit, since log is incomplete
-    assert s.commitIndex == -1
+    assert s.commit_index == -1
 
 
 def test_append_entries_nonempty_missing():
@@ -127,7 +127,7 @@ def test_append_entries_nonempty_missing():
     # simulate a previous successful election and write
     s = State()
     s.store = Store()
-    s.currentTerm = term
+    s.current_term = term
     s.log = [le0]
 
     le1 = Entry(op=Op.DELETE, key='this', value=None, term=term)
@@ -143,7 +143,7 @@ def test_append_entries_nonempty_missing():
     assert res.term == term
     assert len(s.log) == 1
     # expect follower to not commit, since log is incomplete
-    assert s.commitIndex == -1
+    assert s.commit_index == -1
 
 
 def test_append_entries_nonempty_discard():
@@ -155,10 +155,10 @@ def test_append_entries_nonempty_discard():
     # simulate a previous successful election and write
     s = State()
     s.store = Store()
-    s.currentTerm = term
+    s.current_term = term
     s.log = [le0, le1]
-    s.commitIndex = 0
-    s.lastApplied = 0
+    s.commit_index = 0
+    s.last_applied = 0
 
     # This should become the second log entry, replacing le1
     le2 = Entry(op=Op.WRITE, key='this', value='other', term=term)
@@ -175,7 +175,7 @@ def test_append_entries_nonempty_discard():
     assert len(s.log) == 2
     assert s.log[1].op == le2.op
     assert s.log[1].value == le2.value
-    assert s.commitIndex == 0
+    assert s.commit_index == 0
 
 
 def test_append_entries_invalid_term():
@@ -186,7 +186,7 @@ def test_append_entries_invalid_term():
     # simulate a previous successful election and write
     s = State()
     s.store = Store()
-    s.currentTerm = term
+    s.current_term = term
     s.log = [le0]
 
     le1 = Entry(op=Op.DELETE, key='this', value=None, term=past_term)
@@ -203,7 +203,7 @@ def test_append_entries_invalid_term():
     assert len(s.log) == 1
     assert s.log[0].term == le0.term
     assert s.log[0].op == le0.op
-    assert s.commitIndex == -1
+    assert s.commit_index == -1
 
 
 def test_append_entries_new_term():
@@ -214,7 +214,7 @@ def test_append_entries_new_term():
     s = State()
     s.store = Store()
     # simulate a previous successful election
-    s.currentTerm = term
+    s.current_term = term
     s.role = Role.LEADER
 
     res = s.append_entries(
@@ -227,7 +227,7 @@ def test_append_entries_new_term():
     assert res.success
     assert res.term == new_term
     assert s.role == Role.FOLLOWER
-    assert s.currentTerm == new_term
+    assert s.current_term == new_term
 
 
 def test_append_entries_apply_writes():
@@ -242,7 +242,7 @@ def test_append_entries_apply_writes():
     # simulate a previous successful election and write
     s = State()
     s.store = Store()
-    s.currentTerm = term
+    s.current_term = term
     s.log = [le0, le1]
 
     # no new entries, commit existing
@@ -254,7 +254,7 @@ def test_append_entries_apply_writes():
         entries=[],
         leader_commit=1)
     assert res.success
-    assert s.commitIndex == 1
+    assert s.commit_index == 1
     assert s.store.read(k1) == v1
     assert s.store.read(k2) == v2
 
@@ -269,7 +269,7 @@ def test_append_entries_apply_delete():
     # simulate a previous successful election and write
     s = State()
     s.store = Store()
-    s.currentTerm = term
+    s.current_term = term
     s.log = [le0, le1]
 
     # no new entries, commit existing
@@ -282,7 +282,7 @@ def test_append_entries_apply_delete():
         leader_commit=1)
     assert res.success
     assert len(s.log) == 2
-    assert s.commitIndex == 1
+    assert s.commit_index == 1
     assert not s.store.read(k)
 
 

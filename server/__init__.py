@@ -20,11 +20,11 @@ class LogEntry(BaseModel):
 
 class AppendEntries(BaseModel):
     term: int
-    leaderId: int
-    prevLogIndex: int
-    prevLogTerm: int
+    leader_id: int
+    prev_log_index: int
+    prev_log_term: int
     entries: List[LogEntry] = list()
-    leaderCommit: int
+    leader_commit: int
 
 
 class AppendEntriesResponse(BaseModel):
@@ -62,11 +62,11 @@ def build_app():
         """handles AppendEntry RPC requests for writes and heartbeats"""
         res = state.append_entries(
             term=req.term,
-            leader_id=req.leaderId,
-            prev_log_index=req.prevLogIndex,
-            prev_log_term=req.prevLogTerm,
+            leader_id=req.leader_id,
+            prev_log_index=req.prev_log_index,
+            prev_log_term=req.prev_log_term,
             entries=req.entries,  # noqa  -- duck-type match
-            leader_commit=req.leaderCommit)
+            leader_commit=req.leader_commit)
         return AppendEntriesResponse(term=res.term, success=res.success)
 
     return app
