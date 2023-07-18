@@ -38,8 +38,7 @@ def build_app(state: State = None):
     app = FastAPI()
     if not state:
         # dependency injection primarily for test setup and observability
-        state = State()
-    state.store = Store()
+        state = State(Store())
 
     # Note: Default fastapi behavior for unhandled exceptions is to return a
     # 404. This is incorrect as a 4xx status code indicates a malformed request

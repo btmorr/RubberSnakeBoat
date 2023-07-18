@@ -1,4 +1,5 @@
 from enum import StrEnum
+import os
 from store import Store
 from typing import Dict, List
 
@@ -34,24 +35,44 @@ class InvalidOperationException(Exception):
     pass
 
 
+class ForeignNode:
+    # todo: add client connection
+    next_index: int = 0
+    match_index: int = -1
+
+
 class State:
-    store: Store
-    role: Role = Role.FOLLOWER
-    current_term: int = 0
-    voted_for: str = ''
-    log: List[Entry] = list()
-    commit_index: int = -1
-    last_applied: int = -1
-    # next and match idx fn not yet implemented
-    next_index: Dict[str, int] = dict()
-    match_index: Dict[str, int] = dict()
+    def __init__(self, store: Store):
+        self.store = store
+        self.address = os.environ.get('RSB_ADDRESS', 'testing')
+        if self.address == 'testing':
+            print("Warning! RSB_ADDRESS not found, defaulting to test mode")
+
+        self.foreign_nodes: Dict[str, ForeignNode] = dict()
+        nodes_raw = os.environ.get('RSB_NODES', '')
+        for n in nodes_raw.split(','):
+            if n != self.address:
+                self.foreign_nodes[n] = ForeignNode()
+
+        # -- volatile state --
+        self.role: Role = Role.FOLLOWER
+        self.commit_index = -1
+        self.last_applied = -1
+        self.next_index: Dict[str, int] = dict()
+        self.match_index: Dict[str, int] = dict()
+
+        # -- non-volatile state (write to disk before confirming update) --
+        self.log: List[Entry] = list()
+        self.current_term: int = 0
+        self.voted_for: str = ''
 
     def apply_entry(self, entry: Entry):
         if entry.op == Op.WRITE:
             if entry.value:
                 self.store.upsert(entry.key, entry.value)
             else:
-                raise InvalidOperationException(f"Invalid Operation: write missing value for key {entry.key}")
+                raise InvalidOperationException(
+                    f"Invalid Entry: write missing value for key {entry.key}")
         elif entry.op == Op.DELETE:
             self.store.delete(entry.key)
         else:
@@ -98,5 +119,6 @@ class State:
         if leader_commit > self.commit_index:
             self.commit_index = min(leader_commit, len(self.log))
         if self.commit_index > self.last_applied:
-            self.apply_entries(self.log[self.last_applied + 1:self.commit_index + 1])
+            self.apply_entries(
+                self.log[self.last_applied + 1:self.commit_index + 1])
         return AppendResult(self.current_term, True)
