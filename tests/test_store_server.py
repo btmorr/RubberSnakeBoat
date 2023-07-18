@@ -4,7 +4,8 @@ sys.path.append(os.path.realpath(os.path.dirname(__file__)+"/.."))
 
 from fastapi.testclient import TestClient  # noqa
 from server import build_app  # noqa
-from raft import State, Role
+from raft import State, Role  # noqa
+from store import Store  # noqa
 
 
 def test_store_read_empty():
@@ -16,7 +17,7 @@ def test_store_read_empty():
 
 
 def test_store_write():
-    state = State()
+    state = State(Store())
     app = build_app(state)
     # node must be leader to accept writes
     state.role = Role.LEADER
@@ -27,7 +28,7 @@ def test_store_write():
 
 
 def test_store_read_after_write():
-    state = State()
+    state = State(Store())
     app = build_app(state)
     # node must be leader to accept writes
     state.role = Role.LEADER
@@ -40,7 +41,7 @@ def test_store_read_after_write():
 
 
 def test_delete():
-    state = State()
+    state = State(Store())
     app = build_app(state)
     # node must be leader to accept writes
     state.role = Role.LEADER

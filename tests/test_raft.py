@@ -13,8 +13,7 @@ def test_append_entries_empty():
     """test initial heartbeat condition, e.g.: successful election but no log
     entries"""
     term = 1
-    s = State()
-    s.store = Store()
+    s = State(Store())
     # simulate a previous successful election
     s.current_term = term
 
@@ -34,8 +33,7 @@ def test_append_entries_nonempty_first():
     but no previous log entries, first non-empty append"""
     term = 1
     # simulate a previous successful election
-    s = State()
-    s.store = Store()
+    s = State(Store())
     s.current_term = term
 
     le = Entry(op=Op.WRITE, key='this', value='that', term=term)
@@ -60,8 +58,7 @@ def test_append_entries_nonempty():
     term = 1
     le0 = Entry(op=Op.WRITE, key='this', value='that', term=term)
     # simulate a previous successful election and write
-    s = State()
-    s.store = Store()
+    s = State(Store())
     s.current_term = term
     s.log = [le0]
 
@@ -91,8 +88,7 @@ def test_append_entries_evict():
     le0 = Entry(op=Op.WRITE, key='this', value='that', term=term)
     le1 = Entry(op=Op.DELETE, key='this', value=None, term=term)
     # simulate a previous successful election and write
-    s = State()
-    s.store = Store()
+    s = State(Store())
     s.current_term = term
     s.log = [le0, le1]
 
@@ -125,8 +121,7 @@ def test_append_entries_nonempty_missing():
     term = 1
     le0 = Entry(op=Op.WRITE, key='this', value='that', term=term)
     # simulate a previous successful election and write
-    s = State()
-    s.store = Store()
+    s = State(Store())
     s.current_term = term
     s.log = [le0]
 
@@ -153,8 +148,7 @@ def test_append_entries_nonempty_discard():
     le0 = Entry(op=Op.WRITE, key='this', value='that', term=term)
     le1 = Entry(op=Op.DELETE, key='this', value=None, term=term)
     # simulate a previous successful election and write
-    s = State()
-    s.store = Store()
+    s = State(Store())
     s.current_term = term
     s.log = [le0, le1]
     s.commit_index = 0
@@ -184,8 +178,7 @@ def test_append_entries_invalid_term():
     past_term = term-1
     le0 = Entry(op=Op.WRITE, key='this', value='that', term=past_term)
     # simulate a previous successful election and write
-    s = State()
-    s.store = Store()
+    s = State(Store())
     s.current_term = term
     s.log = [le0]
 
@@ -211,8 +204,7 @@ def test_append_entries_new_term():
     entries"""
     term = 1
     new_term = term + 1
-    s = State()
-    s.store = Store()
+    s = State(Store())
     # simulate a previous successful election
     s.current_term = term
     s.role = Role.LEADER
@@ -240,8 +232,7 @@ def test_append_entries_apply_writes():
     le0 = Entry(op=Op.WRITE, key=k1, value=v1, term=term)
     le1 = Entry(op=Op.WRITE, key=k2, value=v2, term=term)
     # simulate a previous successful election and write
-    s = State()
-    s.store = Store()
+    s = State(Store())
     s.current_term = term
     s.log = [le0, le1]
 
@@ -267,8 +258,7 @@ def test_append_entries_apply_delete():
     le0 = Entry(op=Op.WRITE, key=k, value=v, term=term)
     le1 = Entry(op=Op.DELETE, key=k, value=None, term=term)
     # simulate a previous successful election and write
-    s = State()
-    s.store = Store()
+    s = State(Store())
     s.current_term = term
     s.log = [le0, le1]
 
@@ -287,8 +277,7 @@ def test_append_entries_apply_delete():
 
 
 def test_invalid_entry_operation():
-    s = State()
-    s.store = Store()
+    s = State(Store())
 
     ie0 = Entry(op=Op.READ, key='this', value='that', term=1)
     with pytest.raises(InvalidOperationException):
@@ -296,9 +285,18 @@ def test_invalid_entry_operation():
 
 
 def test_invalid_entry_value():
-    s = State()
-    s.store = Store()
+    s = State(Store())
 
     ie0 = Entry(op=Op.WRITE, key='this', value=None, term=1)
     with pytest.raises(InvalidOperationException):
         s.apply_entry(ie0)
+
+
+def test_environment_init():
+    node_addr = 'localhost:12345'
+    os.environ['RSB_ADDRESS'] = node_addr
+    os.environ['RSB_NODES'] = f'{node_addr},localhost:1010,localhost:123456'
+
+    s = State(Store())
+    assert s.address == node_addr
+    assert len(s.foreign_nodes.keys()) == 2
