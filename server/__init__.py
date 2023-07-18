@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException, status, Request, Response
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
-from typing import List, Union
+from typing import List
 from store import Store
 from raft import State, Op, Role
 
@@ -9,13 +9,14 @@ from raft import State, Op, Role
 # all FastAPI and Pydantic code should be limited to the server module
 # (this might have to be flexed for BackgroundTasks depending on performance)
 class ReadResponse(BaseModel):
-    value: Union[str, None]
+    value: str | None
 
 
 class LogEntry(BaseModel):
+    """This class must match the raft.Entry class"""
     op: Op
     key: str
-    value: Union[str, None]
+    value: str | None
     term: int
 
 

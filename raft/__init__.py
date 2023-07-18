@@ -1,6 +1,6 @@
 from enum import StrEnum
 from store import Store
-from typing import Dict, List, Union
+from typing import Dict, List
 
 
 class Role(StrEnum):
@@ -22,7 +22,8 @@ class AppendResult:
 
 
 class Entry:
-    def __init__(self, op: Op, key: str, value: Union[str, None], term: int):
+    """This class must match the server.LogEntry class"""
+    def __init__(self, op: Op, key: str, value: str | None, term: int):
         self.op = op
         self.key = key
         self.value = value
