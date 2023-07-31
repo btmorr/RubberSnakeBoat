@@ -34,6 +34,18 @@ class AppendEntriesResponse(BaseModel):
     success: bool
 
 
+class RequestVote(BaseModel):
+    term: int
+    candidate_id: str
+    last_log_index: int
+    last_log_term: int
+
+
+class RequestVoteResponse(BaseModel):
+    term: int
+    vote_granted: bool
+
+
 def build_app(state: State = None):
     app = FastAPI()
     if not state:
@@ -88,5 +100,15 @@ def build_app(state: State = None):
             entries=req.entries,  # noqa  -- duck-type match
             leader_commit=req.leader_commit)
         return AppendEntriesResponse(term=res.term, success=res.success)
+
+    @app.post("/rpc/vote")
+    async def rpc_append_entries(req: RequestVote) -> RequestVoteResponse:
+        """handles AppendEntry RPC requests for writes and heartbeats"""
+        res = state.request_vote(
+            term=req.term,
+            candidate_id=req.candidate_id,
+            last_log_index=req.last_log_index,
+            last_log_term=req.last_log_term)
+        return RequestVoteResponse(term=res.term, vote_granted=res.vote_granted)
 
     return app

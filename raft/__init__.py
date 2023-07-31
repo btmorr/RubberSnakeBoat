@@ -22,6 +22,12 @@ class AppendResult:
         self.success = success
 
 
+class VoteResult:
+    def __init__(self, term: int, vote_granted: bool):
+        self.term = term
+        self.vote_granted = vote_granted
+
+
 class Entry:
     """This class must match the server.LogEntry class"""
     def __init__(self, op: Op, key: str, value: str | None, term: int):
@@ -41,12 +47,15 @@ class ForeignNode:
     match_index: int = -1
 
 
+SINGLE_NODE_DEPLOYMENT = 'single-node deployment'
+
+
 class State:
     def __init__(self, store: Store):
         self.store = store
-        self.address = os.environ.get('RSB_ADDRESS', 'testing')
-        if self.address == 'testing':
-            print("Warning! RSB_ADDRESS not found, defaulting to test mode")
+        self.address = os.environ.get('RSB_ADDRESS', SINGLE_NODE_DEPLOYMENT)
+        if self.address == SINGLE_NODE_DEPLOYMENT:
+            print("RSB_ADDRESS not found, defaulting to {self.address}")
 
         self.foreign_nodes: Dict[str, ForeignNode] = dict()
         nodes_raw = os.environ.get('RSB_NODES', '')
@@ -72,7 +81,16 @@ class State:
         state. It should not be called directly, but only under the call chain
         of the handler that is responsible for accepting commit ops from the
         leader node, or the task that decides entries are ready to commit, if
-        this node is the leader."""
+        this node is the leader.
+
+        Note that either kind of invalid entry currently represents an
+        unrecoverable failure -- in the future, it's probably worth creating a
+        way to request a healing operation from the write node (e.g.: send a
+        request for a log-correction op or similar). That said, this should
+        never happen as the AppendEntry handler should reject malformed writes
+        before they make it to the log. An alternative for the near term would
+        be to remove the exception paths and let this method silently no-op,
+        since the malformed entry would not be applied anyway."""
         if entry.op == Op.WRITE:
             if entry.value:
                 self.store.upsert(entry.key, entry.value)
@@ -96,7 +114,7 @@ class State:
     def append_entries(
             self,
             term: int,
-            leader_id: int,  # noqa -- to be used
+            leader_id: str,
             prev_log_index: int,
             prev_log_term: int,
             entries: List[Entry],
@@ -111,9 +129,13 @@ class State:
             # ae from expired leader
             return AppendResult(self.current_term, False)
         if term > self.current_term:
-            # election happened, become follower
+            # election happened, become follower, vote for messenger
             self.current_term = term
+            self.voted_for = leader_id
             self.role = Role.FOLLOWER
+        # not currently explicitly checking leader_id against voted_for, as
+        # this would be a byzantine general failure which is beyond the scope
+        # of this implementation to prevent
         if prev_log_index == -1:
             # only before any logs have been shipped
             self.log.extend(entries)
@@ -139,3 +161,20 @@ class State:
             self._apply_entries(
                 self.log[self.last_applied + 1:self.commit_index + 1])
         return AppendResult(self.current_term, True)
+
+    def request_vote(self, term: int, candidate_id: str, last_log_index: int, last_log_term: int):
+        local_last_log_index = len(self.log)-1
+        index_match = last_log_index == local_last_log_index
+        if local_last_log_index > -1:
+            local_last_log_term = self.log[local_last_log_index].term
+        else:
+            local_last_log_term = 0
+        term_match = last_log_term == local_last_log_term
+        if term > self.current_term and index_match and term_match:
+            grant = True
+            self.current_term = term
+            self.voted_for = candidate_id
+            self.role = Role.FOLLOWER
+        else:
+            grant = False
+        return VoteResult(term=self.current_term, vote_granted=grant)
