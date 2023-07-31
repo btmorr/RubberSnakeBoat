@@ -18,7 +18,7 @@ def test_rpc_append_entries():
 
     body = {
             "term": 1,
-            "leader_id": 0,
+            "leader_id": 'localhost:5000',
             "prev_log_index": -1,
             "prev_log_term": 0,
             "entries": [],

@@ -22,7 +22,7 @@ class LogEntry(BaseModel):
 
 class AppendEntries(BaseModel):
     term: int
-    leader_id: int
+    leader_id: str
     prev_log_index: int
     prev_log_term: int
     entries: List[LogEntry] = list()
