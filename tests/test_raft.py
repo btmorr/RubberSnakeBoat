@@ -276,20 +276,67 @@ def test_append_entries_apply_delete():
     assert not s.store.read(k)
 
 
+def test_reject_invalid_entry_operation():
+    term = 1
+    k1 = 'this'
+    le = Entry(op=Op.READ, key=k1, value=None, term=term)
+    # simulate a previous successful election and write of an invalid op
+    s = State(Store())
+    s.current_term = term
+    s.log = [le]
+
+    res = s.append_entries(
+        term=term,
+        leader_id=0,
+        prev_log_index=1,
+        prev_log_term=term,
+        entries=[],
+        leader_commit=0)
+    assert not res.success
+    assert s.commit_index == -1
+
+
+def test_reject_invalid_entry_value():
+    term = 1
+    k1 = 'this'
+    le = Entry(op=Op.WRITE, key=k1, value=None, term=term)
+    # simulate a previous successful election and write of a malformed op
+    s = State(Store())
+    s.current_term = term
+    s.log = [le]
+
+    # no new entries, commit existing
+    res = s.append_entries(
+        term=term,
+        leader_id=0,
+        prev_log_index=1,
+        prev_log_term=term,
+        entries=[],
+        leader_commit=0)
+    assert not res.success
+    assert s.commit_index == -1
+
+
 def test_invalid_entry_operation():
+    """Accesses `_apply_entry`, in order to test exception-handling behavior,
+    though this code should be effectively unreachable if the above 'reject'
+    tests pass"""
     s = State(Store())
 
     ie0 = Entry(op=Op.READ, key='this', value='that', term=1)
     with pytest.raises(InvalidOperationException):
-        s.apply_entry(ie0)
+        s._apply_entry(ie0)
 
 
 def test_invalid_entry_value():
+    """Accesses `_apply_entry`, in order to test exception-handling behavior,
+    though this code should be effectively unreachable if the above 'reject'
+    tests pass"""
     s = State(Store())
 
     ie0 = Entry(op=Op.WRITE, key='this', value=None, term=1)
     with pytest.raises(InvalidOperationException):
-        s.apply_entry(ie0)
+        s._apply_entry(ie0)
 
 
 def test_environment_init():

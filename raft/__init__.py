@@ -66,7 +66,13 @@ class State:
         self.current_term: int = 0
         self.voted_for: str = ''
 
-    def apply_entry(self, entry: Entry):
+    def _apply_entry(self, entry: Entry):
+        """This method takes an entry that should be committed to the state
+        of the data store, and performs the specified transformation of that
+        state. It should not be called directly, but only under the call chain
+        of the handler that is responsible for accepting commit ops from the
+        leader node, or the task that decides entries are ready to commit, if
+        this node is the leader."""
         if entry.op == Op.WRITE:
             if entry.value:
                 self.store.upsert(entry.key, entry.value)
@@ -78,8 +84,14 @@ class State:
         else:
             raise InvalidOperationException(f"Invalid Operation: {entry.op}")
 
-    def apply_entries(self, entries: List[Entry]):
-        [self.apply_entry(en) for en in entries]
+    def _apply_entries(self, entries: List[Entry]):
+        """This method takes a list of entries that should be committed to the
+        state of the data store, and performs the specified transformation of
+        that state. It should not be called directly, but only under the call
+        chain of the handler that is responsible for accepting commit ops from
+        the leader node, or the task that decides entries are ready to commit,
+        if this node is the leader."""
+        [self._apply_entry(en) for en in entries]
 
     def append_entries(
             self,
@@ -90,6 +102,11 @@ class State:
             entries: List[Entry],
             leader_commit: int
     ) -> AppendResult:
+        """Performs various tasks needed to ensure consistent state of both the
+        data store and also of the node leader election process and log
+        shipping behavior. This endpoint is complex by necessity. See the
+        'AppendEntriesRPC' and 'Rules for Servers' sections of the raft paper.
+        """
         if term < self.current_term:
             # ae from expired leader
             return AppendResult(self.current_term, False)
@@ -119,6 +136,6 @@ class State:
         if leader_commit > self.commit_index:
             self.commit_index = min(leader_commit, len(self.log))
         if self.commit_index > self.last_applied:
-            self.apply_entries(
+            self._apply_entries(
                 self.log[self.last_applied + 1:self.commit_index + 1])
         return AppendResult(self.current_term, True)
